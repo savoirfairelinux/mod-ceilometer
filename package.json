@@ -1,0 +1,25 @@
+{
+  "name": "mod-ceilometer",
+  "types": ["module"],
+  "version": "0.1.0",
+  "homepage": "https://github.com/savoirfairelinux/mod-ceilometer",
+  "author": "Alexandre Viau",
+  "description": "Performance data to OpenStack Ceilometer.",
+  "contributors": [
+    {
+      "name": "Alexandre Viau",
+      "email": "alexandre.viau@savoirfairelinux.com"
+    }
+  ],
+  "repository": "https://github.com/savoirfairelinux/mod-ceilometer",
+  "keywords": [
+    "module",
+    "broker",
+    "openstack",
+    "ceilometer"
+  ],
+  "dependencies": {
+    "shinken": ">=2.4"
+  },
+  "license": "AGPL"
+}
