@@ -70,7 +70,7 @@ class CeilometerBroker(BaseModule):
                                               os_tenant_name=self.tenant_name,
                                               os_auth_url=self.auth_url)
 
-    def get_check_result_samples(self, perf_data, timestamp, tags={}):
+    def get_check_result_samples(self, perf_data, timestamp, instance_id, tags={}):
         """
         :param perf_data: Perf data of the brok
         :param timestamp: Timestamp of the check result
@@ -82,8 +82,9 @@ class CeilometerBroker(BaseModule):
 
         for e in metrics.values():
             sample = {
-                'counter_name': e.name,
+                'counter_name': "SURVEIL_" + e.name,
                 'counter_type': 'gauge',
+                'resource_id': instance_id,
             }
 
             field_mappings = [
@@ -104,9 +105,11 @@ class CeilometerBroker(BaseModule):
     def manage_initial_host_status_brok(self, b):
         data = b.data
         host_name = data['host_name']
-        self.host_config[host_name] = {
-            'OS_RESOURCE_ID': data['OS_RESOURCE_ID'],
-        }
+        instance_id = data['customs'].get('_OS_INSTANCE_ID', None)
+        if instance_id is not None:
+            self.host_config[host_name] = {
+                '_OS_INSTANCE_ID': data['_OS_INSTANCE_ID'],
+            }
 
     # A service check result brok has just arrived,
     # we UPDATE data info with this
@@ -123,6 +126,7 @@ class CeilometerBroker(BaseModule):
             post_data = self.get_check_result_samples(
                 b.data['perf_data'],
                 b.data['last_chk'],
+                self.host_config[host_name]['_OS_INSTANCE_ID'],
                 tags=tags
             )
 
@@ -146,6 +150,7 @@ class CeilometerBroker(BaseModule):
             post_data = self.get_check_result_samples(
                 b.data['perf_data'],
                 b.data['last_chk'],
+                self.host_config[host_name]['_OS_INSTANCE_ID'],
                 tags=tags
             )
 
