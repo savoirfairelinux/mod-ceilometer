@@ -85,6 +85,7 @@ class CeilometerBroker(BaseModule):
                 'counter_name': "SURVEIL_" + e.name,
                 'counter_type': 'gauge',
                 'resource_id': instance_id,
+                'counter_unit': 'unknown',
             }
 
             field_mappings = [
@@ -108,7 +109,7 @@ class CeilometerBroker(BaseModule):
         instance_id = data['customs'].get('_OS_INSTANCE_ID', None)
         if instance_id is not None:
             self.host_config[host_name] = {
-                '_OS_INSTANCE_ID': data['_OS_INSTANCE_ID'],
+                '_OS_INSTANCE_ID': instance_id,
             }
 
     # A service check result brok has just arrived,
@@ -183,7 +184,7 @@ class CeilometerBroker(BaseModule):
                 except UnicodeEncodeError:
                     pass
                 for sample in buffer:
-                    self.cclient.samples.create(sample)
+                    self.cclient.samples.create(**sample)
             except Exception as e:
                 self.ticks += 1
                 logger.error("[ceilometer broker] %s" % e)
