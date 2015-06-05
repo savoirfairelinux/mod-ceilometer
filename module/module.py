@@ -82,7 +82,7 @@ class CeilometerBroker(BaseModule):
 
         for e in metrics.values():
             sample = {
-                'counter_name': "SURVEIL_" + e.name,
+                'counter_name': "SURVEIL_" + self.illegal_char.sub('_', e.name),
                 'counter_type': 'gauge',
                 'resource_id': instance_id,
                 'counter_unit': 'unknown',
@@ -176,17 +176,28 @@ class CeilometerBroker(BaseModule):
 
         if len(self.buffer) > 0:
             with self._lock:
-                buffer = self.buffer
+                samples_to_send = self.buffer
                 self.buffer = []
             try:
                 try:
-                    logger.debug("[ceilometer broker] Writing samples: %s" % str(buffer))
+                    logger.debug("[ceilometer broker] Writing samples: %s" % str(samples_to_send))
                 except UnicodeEncodeError:
                     pass
-                for sample in buffer:
+
+                #  Send all samples
+                for sample in samples_to_send:
                     self.cclient.samples.create(**sample)
+                    samples_to_send.remove(sample)
+
             except Exception as e:
                 self.ticks += 1
+
+                #  Sample might not exist at this point
+                try:
+                    logger.error("[ceilometer broker] Could not send sample: %s" % sample)
+                except Exception:
+                    pass
+
                 logger.error("[ceilometer broker] %s" % e)
                 logger.error(
                     "[ceilometer broker] Sending data Failed. "
@@ -194,7 +205,7 @@ class CeilometerBroker(BaseModule):
                     % (self.ticks, self.tick_limit)
                 )
                 with self._lock:
-                    buffer.extend(self.buffer)
-                    self.buffer = buffer
+                    samples_to_send.extend(self.buffer)
+                    self.buffer = samples_to_send
             else:
                 self.ticks = 0
