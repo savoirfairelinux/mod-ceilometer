@@ -24,6 +24,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Shinken.  If not, see <http://www.gnu.org/licenses/>.
 
+import json
 import threading
 
 from shinken.basemodule import BaseModule
@@ -70,6 +71,18 @@ class CeilometerBroker(BaseModule):
                                               os_tenant_name=self.tenant_name,
                                               os_auth_url=self.auth_url)
 
+    def _get_user_metadata(self, instance_metadata):
+        """Given an instance metadata dict, returns user_metadata"""
+        user_metadata = {}
+
+        for k, v in instance_metadata.items():
+            if k.startswith("metering."):
+                user_metadata[
+                    k.replace('metering.', 'user_metadata.')
+                ] = v
+
+        return user_metadata
+
     def get_check_result_samples(self, perf_data, timestamp, instance_id, tags={}):
         """
         :param perf_data: Perf data of the brok
@@ -108,8 +121,18 @@ class CeilometerBroker(BaseModule):
         host_name = data['host_name']
         instance_id = data['customs'].get('_OS_INSTANCE_ID', None)
         if instance_id is not None:
+            instance_metadata = json.loads(
+                data['customs'].get(
+                    '_OS_INSTANCE_METADATA',
+                    '{}'
+                )
+            )
+
+            user_metadata = self._get_user_metadata(instance_metadata)
+
             self.host_config[host_name] = {
                 '_OS_INSTANCE_ID': instance_id,
+                'user_metadata': user_metadata,
             }
 
     # A service check result brok has just arrived,
@@ -119,15 +142,18 @@ class CeilometerBroker(BaseModule):
         host_name = data['host_name']
 
         if host_name in self.host_config:
-            tags = {
-                "host_name": host_name,
-                "service_description": data['service_description']
-            }
+            tags = self.host_config[host_name]['user_metadata']
+            tags.update(
+                {
+                    "host_name": host_name,
+                    "service_description": data['service_description'],
+                }
+            )
 
             post_data = self.get_check_result_samples(
-                b.data['perf_data'],
-                b.data['last_chk'],
-                self.host_config[host_name]['_OS_INSTANCE_ID'],
+                perf_data=b.data['perf_data'],
+                timestamp=b.data['last_chk'],
+                instance_id=self.host_config[host_name]['_OS_INSTANCE_ID'],
                 tags=tags
             )
 
@@ -144,14 +170,13 @@ class CeilometerBroker(BaseModule):
         host_name = data['host_name']
 
         if host_name in self.host_config:
-            tags = {
-                "host_name": host_name,
-            }
+            tags = self.host_config[host_name]['user_metadata']
+            tags.update({"host_name": host_name})
 
             post_data = self.get_check_result_samples(
-                b.data['perf_data'],
-                b.data['last_chk'],
-                self.host_config[host_name]['_OS_INSTANCE_ID'],
+                perf_data=b.data['perf_data'],
+                timestamp=b.data['last_chk'],
+                instance_id=self.host_config[host_name]['_OS_INSTANCE_ID'],
                 tags=tags
             )
 
