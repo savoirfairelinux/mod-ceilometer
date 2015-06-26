@@ -71,17 +71,15 @@ class CeilometerBroker(BaseModule):
                                               os_tenant_name=self.tenant_name,
                                               os_auth_url=self.auth_url)
 
-    def _get_user_metadata(self, instance_metadata):
-        """Given an instance metadata dict, returns user_metadata"""
-        user_metadata = {}
+    def _get_metering_metadata(self, instance_metadata):
+        """Given an instance metadata dict, returns metering_metadata"""
+        metering_metadata = {}
 
         for k, v in instance_metadata.items():
             if k.startswith("metering."):
-                user_metadata[
-                    k.replace('metering.', 'user_metadata.')
-                ] = v
+                metering_metadata[k] = v
 
-        return user_metadata
+        return metering_metadata
 
     def get_check_result_samples(self, perf_data, timestamp, instance_id, tags={}):
         """
@@ -128,11 +126,11 @@ class CeilometerBroker(BaseModule):
                 )
             )
 
-            user_metadata = self._get_user_metadata(instance_metadata)
+            metering_metadata = self._get_metering_metadata(instance_metadata)
 
             self.host_config[host_name] = {
                 '_OS_INSTANCE_ID': instance_id,
-                'user_metadata': user_metadata,
+                'metering_metadata': metering_metadata,
             }
 
     # A service check result brok has just arrived,
@@ -142,7 +140,7 @@ class CeilometerBroker(BaseModule):
         host_name = data['host_name']
 
         if host_name in self.host_config:
-            tags = self.host_config[host_name]['user_metadata']
+            tags = self.host_config[host_name]['metering_metadata']
             tags.update(
                 {
                     "host_name": host_name,
@@ -170,7 +168,7 @@ class CeilometerBroker(BaseModule):
         host_name = data['host_name']
 
         if host_name in self.host_config:
-            tags = self.host_config[host_name]['user_metadata']
+            tags = self.host_config[host_name]['metering_metadata']
             tags.update({"host_name": host_name})
 
             post_data = self.get_check_result_samples(
